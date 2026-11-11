@@ -46,23 +46,32 @@ custom server name as GitHub once it has a credential for that host.
 
 ### Forgejo and Gitea
 
-Install [Forgejo CLI (`fj`)](https://codeberg.org/forgejo-contrib/forgejo-cli) or
-[Gitea CLI (`tea`)](https://gitea.com/gitea/tea) 0.16 or later on your T3 Code server.
-Sign in with `fj --host https://your-server auth add-token` or `tea login add`.
-Repeat for each server you use, including Codeberg.
+Install [Forgejo CLI (`fj`)](https://codeberg.org/forgejo-contrib/forgejo-cli) for Forgejo, or
+[Gitea CLI (`gt`)](https://gitea.com/gitea/cli) for Gitea 28 or later, on your T3 Code server.
+Sign in with `fj --host https://your-server auth add-token` or
+`gt auth login --host https://your-server`. Repeat for each server you use, including Codeberg.
+The older [`tea`](https://gitea.com/gitea/tea) 0.16 or later, signed in with `tea login add`,
+keeps working and is the choice for Gitea servers older than 28.
 
-T3 Code prefers a matching `fj` login and falls back to `tea` when `fj` is unavailable
-or has no login for that server. Once an account is selected, failed actions stay on that
-account. Settings shows the detected CLI. Forgejo and Gitea share one integration entry.
-Servers hosted under a URL subpath, such as `https://example.com/forgejo`, use `tea` because
-fj 0.6 does not preserve the subpath when checking its account.
+T3 Code uses the first CLI that has a login for the repository's server: `fj`, then `gt`, then
+`tea`. Once an account is selected, failed actions stay on that account. Settings shows the
+detected CLI. Forgejo and Gitea share one integration entry.
+Servers hosted under a URL subpath, such as `https://example.com/gitea`, use `gt` or `tea`
+because fj 0.6 does not preserve the subpath when checking its account.
+
+`gt` does not read `tea` logins, so sign in again after switching. Browsing pull requests
+needs a token with `read:repository`, `read:issue`, and `read:user`; creating, reviewing, or
+merging needs `write:repository` and `write:issue`. `gt` keeps the token in the system keyring.
+On a server without one, sign in with `--credential-store file`, or set `GITEA_TOKEN` and
+`GITEA_CLI_HOST` for the T3 Code server.
 
 When cloning or publishing, use a full repository URL to select a specific server.
-You can use `owner/repo` when only one fj server is configured, or with your default `tea`
-login when fj is unavailable or unconfigured. With multiple fj servers, use the full URL.
-If you have multiple `tea` accounts on one server, select one with
-`tea login default <login-name>`. Git push and clone also need Git credentials or an SSH key
-for that server.
+You can use `owner/repo` when only one server is configured, with gt's `default_host`, or with
+your default `tea` login. With multiple fj servers, use the full URL.
+`gt` acts as the active account of each server; change it with `gt auth switch`. If you have
+multiple `tea` accounts on one server, select one with `tea login default <login-name>`.
+Git push and clone also need Git credentials or an SSH key for that server; `gt auth setup-git`
+lets Git use the `gt` login over HTTPS.
 
 ### GitLab
 

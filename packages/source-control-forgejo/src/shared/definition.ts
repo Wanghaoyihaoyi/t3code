@@ -15,7 +15,7 @@ import {
 } from "@t3tools/source-control-core/shared/definition";
 import { icon } from "./icon.ts";
 
-const CHECKOUT_COMMAND = /^tea\s+(?:pr|pulls)\s+checkout\s+(.+)$/i;
+const CHECKOUT_COMMAND = /^(?:tea\s+(?:pr|pulls)\s+checkout|gt\s+pr\s+(?:checkout|co))\s+(.+)$/i;
 const CHANGE_REQUEST_REFERENCE =
   /^https?:\/\/[^/\s]+\/(?:[^/\s]+\/)+[^/\s]+\/pulls\/(\d+)(?:[/?#].*)?$/i;
 
@@ -59,7 +59,7 @@ export const definition = defineSourceControl({
   label: "Forgejo",
   pickerLabel: "Forgejo / Gitea",
   icon,
-  searchKeywords: ["gitea", "tea", "codeberg"],
+  searchKeywords: ["gitea", "gt", "tea", "codeberg"],
   changeRequest: {
     shortLabel: "PR",
     shortLabelWithArticle: "a PR",
@@ -88,13 +88,14 @@ export const definition = defineSourceControl({
   commitUrl: (input) => buildCommitUrl(input, "commit"),
   parseCommitUrl: (url) => parseCommitPath(url, COMMIT_PATH),
   changeRequestActions: new Set(["merge", "close", "reopen", "update-branch"] as const),
-  // Neither `fj` nor `tea` checks out by number.
+  // `fj` and `tea` do not check out by number, and `gt` may not be the CLI in use.
   checkoutCommand: ({ number, repositoryUrl }) =>
     repositoryUrl
       ? `git fetch '${repositoryUrl.replaceAll("'", "'\\''")}' ${changeRequestHeadRef(number)} && git checkout -B pulls/${number} FETCH_HEAD`
       : null,
   // tea also takes `pull` for `pulls` and `m` for `merge`.
-  changeRequestCloseCommand: /\b(?:tea\s+(?:pr|pulls?)|fj\s+pr)\s+(?:merge|m|close)\b/u,
+  changeRequestCloseCommand:
+    /\b(?:(?:tea\s+(?:pr|pulls?)|fj\s+pr)\s+(?:merge|m|close)|gt\s+pr\s+(?:merge|close))\b/u,
   authorProfileUrl: () => null,
   hardLineBreaks: true,
   // Forgejo refuses a change request review without a summary, even with inline comments.

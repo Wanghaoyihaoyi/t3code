@@ -68,9 +68,9 @@ const ForgejoUserSearch = Schema.Struct({
 
 const UNAVAILABLE_REQUIREMENT = {
   missing:
-    "Install Forgejo CLI (`fj` 0.6 or later) from https://codeberg.org/forgejo-contrib/forgejo-cli or Gitea CLI (`tea` 0.16 or later) from https://gitea.com/gitea/tea to browse Forgejo pull requests.",
+    "Install Gitea CLI (`gt`) from https://gitea.com/gitea/cli, Forgejo CLI (`fj` 0.6 or later) from https://codeberg.org/forgejo-contrib/forgejo-cli, or the older Gitea CLI (`tea` 0.16 or later) from https://gitea.com/gitea/tea to browse Forgejo pull requests.",
   unauthenticated:
-    "Authenticate your Forgejo or Gitea server with `fj --host <server-url> auth add-token` on the T3 Code server. If fj is missing or unconfigured for that server, use `tea login add`. A configured fj account must be repaired with fj.",
+    "Authenticate your Forgejo or Gitea server with `gt auth login --host <server-url>` or `fj --host <server-url> auth add-token` on the T3 Code server. If both are missing or unconfigured for that server, use `tea login add`. A configured gt or fj account must be repaired with that CLI.",
 };
 
 const repoPath = (input: ProviderRepositoryRef) =>

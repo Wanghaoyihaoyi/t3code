@@ -433,6 +433,7 @@ it.effect("reads Forgejo jobs that did not run as finished checks", () =>
     assert.deepStrictEqual(
       result.checks.map((check) => [check.name, check.status]),
       [
+        ["e2e", "failure"],
         ["deploy", "skipped"],
         ["audit", "neutral"],
         ["docs", "pending"],
@@ -475,6 +476,7 @@ it.effect("reads Forgejo jobs that did not run as finished checks", () =>
                 ? [
                     status("deploy", "skipped"),
                     status("audit", "warning"),
+                    status("e2e", "error"),
                     status("docs", "future-state"),
                   ]
                 : [];
@@ -1518,6 +1520,7 @@ it.effect("routes mounted Forgejo repositories without repeating the mount in AP
                   ]),
                 ),
               );
+            if (input.command === "gt") return Effect.succeed(processOutput("[]"));
             const supported = [
               "https://code.test/forgejo/api/v1/user",
               "https://code.test/forgejo/api/v1/repos/maria/project/pulls?state=open",
@@ -1903,6 +1906,7 @@ it.effect(
                     input.remoteUrl,
                     "http://forgejo.local:3000/maria/project.git",
                   );
+                  if (input.command === "gt") return Effect.succeed([]);
                   if (scenario === "invalid-storage")
                     return Effect.fail(
                       new ForgejoCli.ForgejoCliError({

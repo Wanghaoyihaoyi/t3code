@@ -128,6 +128,7 @@ describe("Forgejo CLI commands", () => {
       "tea pr m 7",
       "tea pull close 7",
       "fj pr close 7",
+      "gt pr merge 7",
     ]) {
       expect(definition.changeRequestCloseCommand.test(command), command).toBe(true);
     }

@@ -59,7 +59,7 @@ export const discovery = {
       : null;
   },
   installHint:
-    "Install `fj` 0.6 or later from https://codeberg.org/forgejo-contrib/forgejo-cli and run `fj --host <server-url> auth add-token`, or install `tea` 0.16 or later from https://gitea.com/gitea/tea and run `tea login add` for each Forgejo or Gitea server.",
+    "Install `gt` from https://gitea.com/gitea/cli and run `gt auth login --host <server-url>`, install `fj` 0.6 or later from https://codeberg.org/forgejo-contrib/forgejo-cli and run `fj --host <server-url> auth add-token`, or install `tea` 0.16 or later from https://gitea.com/gitea/tea and run `tea login add` for each Forgejo or Gitea server.",
 } satisfies SourceControlCliDiscoverySpec;
 
 export const makeDiscovery = Effect.gen(function* () {
@@ -87,9 +87,9 @@ export const makeDiscovery = Effect.gen(function* () {
           Effect.map((result) => result.stdout.trim()),
           Effect.orElseSucceed(() => ""),
         );
+      const remote = ForgejoCli.parseForgejoRemote(remoteUrl);
       const credentials = yield* Effect.result(listLogins({ cwd, command: "fj", remoteUrl }));
       const logins = Result.isSuccess(credentials) ? credentials.success : [];
-      const remote = ForgejoCli.parseForgejoRemote(remoteUrl);
       const login =
         (remote && ForgejoCli.matchForgejoLogin(logins, remote)) ||
         logins.find((entry) => entry.default === "true") ||
@@ -142,6 +142,44 @@ export const makeDiscovery = Effect.gen(function* () {
         }
         return fj;
       }
+      const gtLogins = yield* listLogins({ cwd, command: "gt", remoteUrl }).pipe(
+        Effect.orElseSucceed(() => []),
+      );
+      const gtLogin = remote
+        ? ForgejoCli.matchForgejoLogin(gtLogins, remote)
+        : (gtLogins.find((entry) => entry.default === "true") ?? gtLogins[0]);
+      if (gtLogin) {
+        const gt = yield* probeSourceControlProvider({
+          cwd,
+          process,
+          spec: {
+            ...discovery,
+            executable: "gt",
+            authArgs: ["auth", "status", "--verify", "--json", "--host", gtLogin.url],
+            parseAuth: (result) => {
+              const account = ForgejoCli.parseGtAccounts(result.stdout).find(
+                (entry) => entry.active,
+              );
+              return providerAuth({
+                status:
+                  account?.verified === true
+                    ? "authenticated"
+                    : account?.verified === false
+                      ? "unauthenticated"
+                      : "unknown",
+                account: account?.user || gtLogin.user,
+                host: ForgejoCli.parseForgejoRemote(gtLogin.url)?.host,
+                ...(account?.verified === false
+                  ? {
+                      detail: `Sign in again with \`gt auth login --host ${gtLogin.url}\`.`,
+                    }
+                  : {}),
+              });
+            },
+          },
+        });
+        if (gt.status === "available") return gt;
+      }
       const tea = yield* probeSourceControlProvider({ cwd, process, spec: discovery });
       return tea.status === "available" || fj.status === "missing" ? tea : fj;
     }),
@@ -153,7 +191,7 @@ export const makeDiscovery = Effect.gen(function* () {
         const remote = ForgejoCli.parseForgejoRemote(input.context.remoteUrl);
         if (!remote) return null;
         let failure: ForgejoCli.ForgejoCliError | undefined;
-        for (const command of ["fj", "tea"] as const) {
+        for (const command of ["fj", "gt", "tea"] as const) {
           const logins = yield* listLogins({
             cwd: input.cwd,
             command,
@@ -432,8 +470,8 @@ export const make = Effect.gen(function* () {
       function* (input) {
         const repo = yield* cli.resolveRepository(input);
         const pull = yield* getPull(input);
-        if (repo.command === "fj") {
-          // fj checkout cannot target a repository outside the local remotes.
+        if (repo.command === "fj" || repo.command === "gt") {
+          // fj checkout cannot target a repository outside the local remotes; gt names branches its own way.
           const urls = yield* request(
             { ...input, path: repositoryPath(repo.repository) },
             RepositorySchema,

@@ -3,7 +3,10 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
-import { SourceControlProviderError } from "@t3tools/contracts";
+import {
+  SourceControlProviderError,
+  type SourceControlProviderDiscoveryItem,
+} from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as SourceControlHost from "@t3tools/source-control-core/server/SourceControlHost";
 import * as ForgejoCli from "./ForgejoCli.ts";
@@ -145,11 +148,11 @@ export const makeDiscovery = Effect.gen(function* () {
       const gtLogins = yield* listLogins({ cwd, command: "gt", remoteUrl }).pipe(
         Effect.orElseSucceed(() => []),
       );
-      const gtLogin = remote
-        ? ForgejoCli.matchForgejoLogin(gtLogins, remote)
-        : (gtLogins.find((entry) => entry.default === "true") ?? gtLogins[0]);
+      const gtMatch = remote ? ForgejoCli.matchForgejoLogin(gtLogins, remote) : undefined;
+      const gtLogin = gtMatch ?? gtLogins.find((entry) => entry.default === "true") ?? gtLogins[0];
+      let gt: SourceControlProviderDiscoveryItem | undefined;
       if (gtLogin) {
-        const gt = yield* probeSourceControlProvider({
+        gt = yield* probeSourceControlProvider({
           cwd,
           process,
           spec: {
@@ -178,9 +181,10 @@ export const makeDiscovery = Effect.gen(function* () {
             },
           },
         });
-        if (gt.status === "available") return gt;
+        if (gt.status === "available" && (gtMatch || !remote)) return gt;
       }
       const tea = yield* probeSourceControlProvider({ cwd, process, spec: discovery });
+      if (tea.status !== "available" && gt?.status === "available") return gt;
       return tea.status === "available" || fj.status === "missing" ? tea : fj;
     }),
     refineUnknownRemote: Effect.fn("ForgejoSourceControlProvider.refineUnknownRemote")(

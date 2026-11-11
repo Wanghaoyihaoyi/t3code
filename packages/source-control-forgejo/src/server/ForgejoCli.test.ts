@@ -348,9 +348,10 @@ it.effect("rejects a gt response that is cut short", () =>
 );
 
 it.effect.each([
-  ["a verified", true, "authenticated"],
-  ["an expired", false, "unauthenticated"],
-] as const)("shows %s gt login in Settings", ([, verified, status]) =>
+  ["a verified", true, "authenticated", "https://example.com/gitea/maria/project.git"],
+  ["an expired", false, "unauthenticated", "https://example.com/gitea/maria/project.git"],
+  ["another host's", true, "authenticated", "https://github.com/maria/project.git"],
+] as const)("shows %s gt login in Settings", ([, verified, status, remoteUrl]) =>
   Effect.gen(function* () {
     const spec = yield* ForgejoSourceControlProvider.makeDiscovery;
     if (spec.type !== "managed-cli") return yield* Effect.die("managed discovery missing");
@@ -370,8 +371,7 @@ it.effect.each([
         ForgejoCli.layer,
         withCli({
           run: (input) => {
-            if (input.command === "git")
-              return Effect.succeed(processOutput("https://example.com/gitea/maria/project.git\n"));
+            if (input.command === "git") return Effect.succeed(processOutput(`${remoteUrl}\n`));
             if (input.command !== "gt") return missing(input);
             if (input.args[0] === "--version")
               return Effect.succeed(processOutput("gt version 0.2.0 (2026-10-26)"));
